@@ -11,14 +11,17 @@ import zhttp.http.Response
 import zhttp.service.Server
 
 import zio.*
+import sttp.tapir.Endpoint
 
 object Main extends ZIOAppDefault:
 
-  val helloEndpoint: PublicEndpoint[Unit, Unit, String, Any] =
-    endpoint.in("hello").get.out(stringBody)
+  val PORT = 8080
 
-  val lengthEndpoint: PublicEndpoint[String, Unit, Int, Any] =
-    endpoint.in("length").post.in(stringBody).out(plainBody[Int])
+  val helloEndpoint: PublicEndpoint[Unit, String, String, Any] =
+    endpoint.in("hello").get.out(stringBody).errorOut(stringBody)
+
+  val lengthEndpoint: PublicEndpoint[String, String, Int, Any] =
+    endpoint.in("length").post.in(stringBody).out(plainBody[Int]).errorOut(stringBody)
 
   val serverEndpoints: List[ServerEndpoint[Any, Task]] =
     List(
@@ -28,10 +31,14 @@ object Main extends ZIOAppDefault:
 
   val swaggerEndpoints: List[ServerEndpoint[Any, Task]] =
     SwaggerInterpreter()
-      .fromServerEndpoints[Task](serverEndpoints, "ZIO Tapir OpenAPI Explorer", "1.0")
+      .fromEndpoints[Task](
+        List(helloEndpoint, lengthEndpoint),
+        "ZIO Tapir OpenAPI Explorer",
+        "1.0"
+      )
 
   val httpApp: Http[Any, Throwable, Request, Response] =
-    ZioHttpInterpreter().toHttp(swaggerEndpoints)
+    ZioHttpInterpreter().toHttp(serverEndpoints ++ swaggerEndpoints)
 
-  override def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] =
-    Server.start(8080, httpApp)
+  override def run: ZIO[Any, Any, Any] =
+    Server.start(PORT, httpApp)
