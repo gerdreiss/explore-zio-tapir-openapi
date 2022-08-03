@@ -18,24 +18,33 @@ object Main extends ZIOAppDefault:
   val PORT = 8080
 
   val helloEndpoint: PublicEndpoint[Unit, String, String, Any] =
-    endpoint.in("hello").get.out(stringBody).errorOut(stringBody)
+    endpoint
+      .in("api" / "v1" / "hello")
+      .get
+      .out(stringBody)
+      .errorOut(stringBody)
 
   val lengthEndpoint: PublicEndpoint[String, String, Int, Any] =
-    endpoint.in("length").post.in(stringBody).out(plainBody[Int]).errorOut(stringBody)
+    endpoint
+      .in("api" / "v1" / "length")
+      .post
+      .in(stringBody)
+      .out(plainBody[Int])
+      .errorOut(stringBody)
+
+  val swaggerEndpoints: List[ServerEndpoint[Any, Task]] =
+    SwaggerInterpreter()
+      .fromEndpoints(
+        List(helloEndpoint, lengthEndpoint),
+        "ZIO Tapir OpenAPI Explorer",
+        "1.0"
+      )
 
   val serverEndpoints: List[ServerEndpoint[Any, Task]] =
     List(
       helloEndpoint.zServerLogic(_ => ZIO.succeed("Hello, world!")),
       lengthEndpoint.zServerLogic(input => ZIO.succeed(input.length))
     )
-
-  val swaggerEndpoints: List[ServerEndpoint[Any, Task]] =
-    SwaggerInterpreter()
-      .fromEndpoints[Task](
-        List(helloEndpoint, lengthEndpoint),
-        "ZIO Tapir OpenAPI Explorer",
-        "1.0"
-      )
 
   val httpApp: Http[Any, Throwable, Request, Response] =
     ZioHttpInterpreter().toHttp(serverEndpoints ++ swaggerEndpoints)
