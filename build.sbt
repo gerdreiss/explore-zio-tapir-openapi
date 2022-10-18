@@ -1,6 +1,6 @@
 val scala3Version = "3.2.0"
 
-val tapirVersion = "1.1.2"
+val tapirVersion = "1.1.3"
 
 lazy val root = project
   .in(file("."))
